@@ -112,7 +112,7 @@ Private Sub BtnReadVBPRecentFiles_Click()
     For i = 1 To 50
         'If Registry.ValueExists(CStr(i)) Then
             s = Registry.ReadString(CStr(i))
-            List1.AddItem s
+            List1.AddItem CStr(i) & ": " & s
         'End If
     Next
     Registry.CloseKey
@@ -126,7 +126,7 @@ Private Sub BtnWriteVBPRecentFiles_Click()
     End If
     Dim i As Long, c As Long: c = List1.ListCount
     For i = 0 To c - 1
-        Registry.WriteString CStr(i + 1), List1.List(i)
+        Registry.WriteString CStr(i + 1), ParseFileName(List1.List(i))
     Next
 Try: On Error GoTo Catch
     If c < 50 Then
@@ -144,9 +144,12 @@ Finally:
 End Sub
 
 Private Sub BtnFileExists_Click()
-    Dim i As Long: i = List1.ListIndex
-    If i < 0 Then Exit Sub
-    Dim pfn As PathFileName: Set pfn = MNew.PathFileName(List1.List(i))
+    Dim s As String
+    'should we take the filename from the listbox,
+    's = Text1.Text = ListBox_ParseFileName(List1)
+    'or should we take it directly from the textbox?
+    s = Text1.Text
+    Dim pfn As PathFileName: Set pfn = MNew.PathFileName(s)
     If pfn.IsPath Then
         If pfn.PathExists Then
             MsgBox "Yes, path does exist:" & vbCrLf & pfn.Value
@@ -164,7 +167,7 @@ Private Sub BtnDeleteEntry_Click()
     Dim i As Long: i = List1.ListIndex
     If i < 0 Then Exit Sub
     Dim pfn As String: pfn = List1.List(i)
-    If MsgBox("Are you sure to delete this entry?" & vbCrLf & pfn) <> vbOK Then Exit Sub
+    If MsgBox("Are you sure to delete this entry?" & vbCrLf & pfn, vbOKCancel) <> vbOK Then Exit Sub
     List1.RemoveItem i
 End Sub
 
@@ -181,10 +184,23 @@ Private Sub Text1_KeyUp(KeyCode As Integer, Shift As Integer)
 End Sub
 
 Private Sub List1_Click()
-    Dim i As Long: i = List1.ListIndex
-    If i < 0 Then Exit Sub
-    Text1.Text = List1.List(i)
+    Text1.Text = ListBox_ParseFileName(List1)
 End Sub
+
+Function ListBox_ParseFileName(aLB As ListBox) As String
+    'parses the filename in this context from the ListBox aLB
+    Dim i As Long: i = aLB.ListIndex
+    If i < 0 Then Exit Function
+    ListBox_ParseFileName = ParseFileName(aLB.List(i))
+End Function
+
+Function ParseFileName(s As String) As String
+    'parses the filename in this context from the string
+    Dim sa() As String: sa = Split(s, ": ")
+Try: On Error GoTo Catch
+    ParseFileName = sa(1)
+Catch:
+End Function
 
 'Private Function IsPath(pfn As String) As Boolean
 'Try: On Error GoTo Catch
