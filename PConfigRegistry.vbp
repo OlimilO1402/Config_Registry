@@ -1,12 +1,12 @@
 Type=Exe
-Form=Forms\Form1.frm
 Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#C:\WINDOWS\SysWow64\stdole2.tlb#OLE Automation
+Form=Forms\Form1.frm
 Module=Registry; Modules\Registry.bas
 Module=MErr; ..\Err_CorrectErrorHandling\Modules\MErr.bas
-Class=PathFileName; ..\IO_PathFileName\Classes\PathFileName.cls
 Module=MShell; ..\IO_PathFileName\Modules\MShell.bas
 Module=MString; ..\Sys_Strings\Modules\MString.bas
 Module=MNew; ..\IO_PathFileName\Modules\MNew.bas
+Class=PathFileName; ..\IO_PathFileName\Classes\PathFileName.cls
 ResFile32="Resources\MyRes.res"
 IconForm="FMain"
 Startup="FMain"
