@@ -254,33 +254,33 @@ Public Enum RegistryView
 End Enum
 
 Private Type SECURITY_ATTRIBUTES
-    nLength              As Long
-    lpSecurityDescriptor As Long
-    bInheritHandle       As Long
-End Type
-
-Private Type SECURITY_DESCRIPTOR
-    Revision             As Byte
-    Sbz1                 As Byte
-    Control              As Long
-    Owner                As Long
-    Group                As Long
-    Sacl                 As ACL
-    Dacl                 As ACL
-End Type
+    nLength              As Long    ' 4
+    lpSecurityDescriptor As Long    ' 4
+    bInheritHandle       As Long    ' 4
+End Type                      ' Sum: 12
 
 Private Type ACL
-    AclRevision As Byte
-    Sbz1        As Byte
-    AclSize     As Integer
-    AceCount    As Integer
-    Sbz2        As Integer
-End Type
+    AclRevision         As Byte    ' 1
+    Sbz1                As Byte    ' 1
+    AclSize             As Integer ' 2
+    AceCount            As Integer ' 2
+    Sbz2                As Integer ' 2
+End Type                      ' Sum: 8
+
+Private Type SECURITY_DESCRIPTOR
+    Revision             As Byte    ' 1
+    Sbz1                 As Byte    ' 1+2
+    Control              As Long    ' 4
+    Owner                As Long    ' 4
+    Group                As Long    ' 4
+    Sacl                 As ACL     ' 8
+    Dacl                 As ACL     ' 8
+End Type                      ' Sum: 32
 
 Private hkeyNames() As String ' = Array("HKEY_CLASSES_ROOT", "HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE", "HKEY_USERS", "HKEY_PERFORMANCE_DATA", "HKEY_CURRENT_CONFIG", "HKEY_DYN_DATA")
 
 ''<SecurityCritical>
-Private m_hkey      As LongPtr
+Private m_hkey      As LongPtr ' SafeRegistryHandle
 Private m_state     As Long
 Private m_keyName   As String
 Private m_remoteKey As Boolean
@@ -316,7 +316,7 @@ End Property
 Public Property Get View() As RegistryView
     '<SecuritySafeCritical>
     EnsureNotDisposed
-    View = regView
+    View = m_regView
 End Property
 
 ''' <summary>Ruft ein <seecref="T:Microsoft.Win32.SafeHandles.SafeRegistryHandle"/>-Objekt ab, das den Registrierungsschlüssel darstellt, der vom aktuellen <seecref="T:Microsoft.Win32.RegistryKey"/>-Objekt gekapselt wird.</summary>
@@ -332,7 +332,7 @@ Public Property Get Handle() As LongPtr
     EnsureNotDisposed
     Dim errorCode As Long: errorCode = 6
     Dim hkResult As LongPtr '= Nothing
-    If IsSystemKey() Then
+    If IsSystemKey Then
         Dim hKey As LongPtr '= CType(0, IntPtr)
         Select Case m_keyName
         Case "HKEY_CLASSES_ROOT":     hKey = HKEY_CLASSES_ROOT
@@ -345,7 +345,7 @@ Public Property Get Handle() As LongPtr
         Case Else: Win32Error errorCode, Nothing
         End Select
         
-        errorCode = Win32Native.RegOpenKeyEx(hKey, Nothing, 0, GetRegistryKeyAccess(IsWritable()) Or CInt(regView), hkResult)
+        errorCode = RegOpenKeyExW(hKey, Nothing, 0, GetRegistryKeyAccess(IsWritable) Or CLng(regView), VarPtr(hkResult))
         If errorCode = 0 Then
             If Not hkResult.IsInvalid Then Handle = hkResult
         End If
@@ -591,7 +591,7 @@ Private Function CreateSubKeyInternal(ByVal subkey As String, ByVal PermissionCh
             Dim RegistryKey2 As RegistryKey: set RegistryKey2 = New RegistryKey: RegistryKey2.New_ hkResult, permissionCheck IsNot RegistryKeyPermissionCheck.ReadSubTree, False, remoteKey, False, regView
             CheckPermission(RegistryInternalCheck.CheckSubTreePermission, subkey, subKeyWritable:=False, permissionCheck)
             RegistryKey2.checkMode = PermissionCheck
-            If subkey.length = 0 Then
+            If subkey.Length = 0 Then
                 RegistryKey2.keyName = keyName
             Else
                 RegistryKey2.keyName = keyName & "\" & subkey
@@ -939,8 +939,8 @@ Public Function OpenRemoteBaseKey(ByVal hKey As RegistryHive, ByVal machineName 
     End If
     RegistryKey.ValidateKeyView (View)
     RegistryKey.CheckUnmanagedCodePermission()
-    Dim result As LongPtr = Nothing
-    Dim num2 As Long = Win32Native.RegConnectRegistry(machineName, New SafeRegistryHandle(New IntPtr(CInt(hKey)), ownsHandle:=False), result)
+    Dim result As LongPtr '= Nothing
+    Dim num2 As Long: num2 = RegConnectRegistry(machineName, New_SafeRegistryHandle(m_hkey), False, result)
     Select Case num2
         Case 1114
             Throw New ArgumentException(Environment.GetResourceString("Arg_DllInitFailure"))
@@ -1437,15 +1437,15 @@ _Select0_Case11:
 '''                     char[] array3 = new char[checked(array2.Length + 1)];
 '''
 '''
-                    For i = 0 To array2.length - 1
+                    For i = 0 To array2.Length - 1
                         array3(i) = array2(i)
                     Next
-                    array3(array3.length - 1) = ChrW(0)
+                    array3(array3.Length - 1) = ChrW(0)
                     array2 = array3
                 Catch innerException2 As OverflowException
                     Throw New IOException(Environment.GetResourceString("Arg_RegGetOverflowBug"), innerException2)
                 End Try
-                array2(array2.length - 1) = ChrW(0)
+                array2(array2.Length - 1) = ChrW(0)
             End If
             Dim list As IList(Of String) = New List(Of String)()
             Dim num4 = 0
@@ -1542,8 +1542,8 @@ End Sub
 '''   <IPermissionclass="System.Security.Permissions.RegistryPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"version="1"Unrestricted="true"/>
 '''   <IPermissionclass="System.Security.Permissions.SecurityPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"version="1"Flags="UnmanagedCode"/>
 ''' </PermissionSet>
-Public Sub SetValue(ByVal Name As String, ByVal Value)
-    SetValue Name, Value, RegistryValueKind.rvkUnknown
+Public Sub SetValue(ByVal Name As String, ByVal value)
+    SetValue Name, value, RegistryValueKind.rvkUnknown
 
     ''' <summary>Legt mithilfe des angegebenen Registrierungsdatentyps den Wert eines Name-Wert-Paars im Registrierungsschlüssel fest.</summary>
     ''' <paramname="name">Der Name des zu speichernden Werts. </param>
@@ -1722,8 +1722,8 @@ End Sub
 '''
 '''
 
-Private Function CalculateValueKind(Value) As RegistryValueKind
-    Dim vt As VbVarType: vt = VarType(Value)
+Private Function CalculateValueKind(value) As RegistryValueKind
+    Dim vt As VbVarType: vt = VarType(value)
     If vt = vbLong Then
         CalculateValueKind = RegistryValueKind.rvkDWord
         Exit Function
@@ -1834,23 +1834,23 @@ Friend Function FixupName(ByVal Name As String) As String
     End If
     Dim stringBuilder As StringBuilder = New StringBuilder(name)
     FixupPath (StringBuilder)
-    Dim num As Long: num = StringBuilder.length - 1
+    Dim num As Long: num = StringBuilder.Length - 1
     If num >= 0 AndAlso stringBuilder(num) = "\"c Then
-        StringBuilder.length = num
+        StringBuilder.Length = num
     End If
     Return stringBuilder.ToString()
 End Function
 
-Private Sub FixupPath(ByVal path As String) 'Builder)
-    Dim length As Long: length = Len(path) '.Length
+Private Sub FixupPath(ByVal Path As String) 'Builder)
+    Dim Length As Long: Length = Len(Path) '.Length
     Dim flag As Boolean '= False
     Dim c As String: c = ChrW(65535)
     Dim i As Long
-    For i = 1 To length - 1 - 1
-        If Mid(path, i) = "\" Then
+    For i = 1 To Length - 1 - 1
+        If Mid(Path, i) = "\" Then
             i = i + 1
-            While i < length And Mid(path, i) = "\"
-                Mid(path, i) = c
+            While i < Length And Mid(Path, i) = "\"
+                Mid(Path, i) = c
                 i = i + 1
                 flag = True
             Wend
@@ -1861,12 +1861,12 @@ Private Sub FixupPath(ByVal path As String) 'Builder)
     End If
     i = 0
     Dim num As Long: num = 0
-    While i < length
-        If path(i) = c Then
+    While i < Length
+        If Path(i) = c Then
             i += 1
             Continue While
         End If
-        path(num) = path(i)
+        Path(num) = Path(i)
         i += 1
         num += 1
     Wend
@@ -1875,59 +1875,59 @@ End Sub
 
 Private Sub GetSubKeyReadPermission(ByVal subKeyName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Read
-    path = m_keyName & "\" & subKeyName & "\."
+    Path = m_keyName & "\" & subKeyName & "\."
 End Sub
 
 Private Sub GetSubKeyWritePermission(ByVal subKeyName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Write
-    path = m_keyName & "\" & subKeyName & "\."
+    Path = m_keyName & "\" & subKeyName & "\."
 End Sub
 
 Private Sub GetSubKeyCreatePermission(ByVal subKeyName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Create
-    path = m_keyName & "\" & subKeyName & "\."
+    Path = m_keyName & "\" & subKeyName & "\."
 End Sub
 
 Private Sub GetSubTreeReadPermission(ByVal subKeyName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Read
-    path = m_keyName & "\" & subKeyName & "\"
+    Path = m_keyName & "\" & subKeyName & "\"
 End Sub
 
 Private Sub GetSubTreeWritePermission(ByVal subKeyName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Write
-    path = m_keyName & "\" & subKeyName & "\"
+    Path = m_keyName & "\" & subKeyName & "\"
 End Sub
 
 Private Sub GetSubTreeReadWritePermission(ByVal subKeyName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Read Or RegistryPermissionAccess.Write
-    path = m_keyName & "\" & subKeyName
+    Path = m_keyName & "\" & subKeyName
 End Sub
 
 Private Sub GetValueReadPermission(ByVal valueName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Read
-    path = m_keyName & "\" & valueName
+    Path = m_keyName & "\" & valueName
 End Sub
 
 Private Sub GetValueWritePermission(ByVal valueName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Write
-    path = m_keyName & "\" & valueName
+    Path = m_keyName & "\" & valueName
 End Sub
 
 Private Sub GetValueCreatePermission(ByVal valueName As String, ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Create
-    path = m_keyName & "\" & valueName
+    Path = m_keyName & "\" & valueName
 End Sub
 
 Private Sub GetKeyReadPermission(ByRef access_out As RegistryPermissionAccess, ByRef path_out As String)
     access = RegistryPermissionAccess.Read
-    path = m_keyName & "\."
+    Path = m_keyName & "\."
 End Sub
 
 '<SecurityCritical>
 Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As String, ByVal subkeyWritable As Boolean, ByVal subKeyCheck As RegistryKeyPermissionCheck)
     Dim flag As Boolean '= False
     Dim access As RegistryPermissionAccess: access = RegistryPermissionAccess.NoAccess
-    Dim path As String '= Nothing
+    Dim Path As String '= Nothing
     If CodeAccessSecurityEngine.QuickCheckForAllDemands() Then
         Exit Sub 'Return
     End If
@@ -1938,34 +1938,34 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
             'Exit Select
         End If
         flag = True
-        GetSubKeyReadPermission item, access, path
+        GetSubKeyReadPermission item, access, Path
     Case RegistryInternalCheck.CheckSubKeyWritePermission
         If m_remoteKey Then
             CheckUnmanagedCodePermission
         ElseIf checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetSubKeyWritePermission item, access, path
+            GetSubKeyWritePermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckSubKeyCreatePermission
         If m_remoteKey Then
             CheckUnmanagedCodePermission
         ElseIf checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetSubKeyCreatePermission item, access, path
+            GetSubKeyCreatePermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckSubTreeReadPermission
         If m_remoteKey Then
             CheckUnmanagedCodePermission
         ElseIf checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetSubTreeReadPermission item, access, path
+            GetSubTreeReadPermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckSubTreeWritePermission
         If m_remoteKey Then
             CheckUnmanagedCodePermission
         ElseIf checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetSubTreeWritePermission item, access, path
+            GetSubTreeWritePermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckSubTreeReadWritePermission
         If m_remoteKey Then
@@ -1973,30 +1973,30 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
             'Exit Select
         End If
         flag = True
-        GetSubTreeReadWritePermission item, access, path
+        GetSubTreeReadWritePermission item, access, Path
     Case RegistryInternalCheck.CheckValueReadPermission
         If checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetValueReadPermission item, access, path
+            GetValueReadPermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckValueWritePermission
         If m_remoteKey Then
             CheckUnmanagedCodePermission
         ElseIf checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetValueWritePermission item, access, path
+            GetValueWritePermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckValueCreatePermission
         If m_remoteKey Then
             CheckUnmanagedCodePermission
         ElseIf checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetValueCreatePermission item, access, path
+            GetValueCreatePermission item, access, Path
         End If
     Case RegistryInternalCheck.CheckKeyReadPermission
         If checkMode Is RegistryKeyPermissionCheck.[Default] Then
             flag = True
-            GetKeyReadPermission access, path
+            GetKeyReadPermission access, Path
         End If
     Case RegistryInternalCheck.CheckSubTreePermission
         Select Case subKeyCheck
@@ -2007,7 +2007,7 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
                         'Exit Select
                     End If
                     flag = True
-                    GetSubTreeReadPermission item, access, path
+                    GetSubTreeReadPermission item, access, Path
                 End If
             Case RegistryKeyPermissionCheck.ReadWriteSubTree
                 If checkMode <> RegistryKeyPermissionCheck.ReadWriteSubTree Then
@@ -2016,7 +2016,7 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
                         'Exit Select
                     Else
                         flag = True
-                        GetSubTreeReadWritePermission item, access, path
+                        GetSubTreeReadWritePermission item, access, Path
                     End If
                 End If
         End Select
@@ -2027,7 +2027,7 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
                 'Exit Select
             Else
                 flag = True
-                GetSubKeyReadPermission item, access, path
+                GetSubKeyReadPermission item, access, Path
             End If
         ElseIf subkeyWritable Then
             If checkMode = RegistryKeyPermissionCheck.ReadSubTree Then
@@ -2037,7 +2037,7 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
                 End If
             Else
                 flag = True
-                GetSubTreeReadWritePermission item, access, path
+                GetSubTreeReadWritePermission item, access, Path
             End If
         End If
     Case RegistryInternalCheck.CheckOpenSubKeyPermission
@@ -2049,7 +2049,7 @@ Private Sub CheckPermission(ByVal check As RegistryInternalCheck, ByVal item As 
                 End If
             Else
                 flag = True
-                GetSubKeyReadPermission item, access, path
+                GetSubKeyReadPermission item, access, Path
             End If
         End If
     End Select
@@ -2187,3 +2187,16 @@ End Sub
 '   End Function
 'End Class
 'End Class
+
+'private Class SafeRegistryHandle
+'Private Function SafeRegistryHandle_IsInvalid(Handle As LongPtr) As Boolean
+Private Function SRH_IsInvalid(Handle As LongPtr) As Boolean
+    SRH_IsInvalid = Handle = 0
+End Function
+Private Function SRH_ReleaseHandle(Handle As LongPtr) As Boolean
+    SRH_ReleaseHandle = RegCloseKey(Handle) = ERROR_SUCCESS
+End Function
+Private Sub SRH_SetHandleAsInvalid(Handle As LongPtr)
+    If SRH_ReleaseHandle(Handle) Then Handle = 0
+End Sub
+

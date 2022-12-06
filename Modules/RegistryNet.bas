@@ -1,4 +1,4 @@
-Attribute VB_Name = "MRegistryy"
+Attribute VB_Name = "RegistryNet"
 Option Explicit
 'Imports System.Runtime.InteropServices
 ''' <summary>Enthält Informationen über die Einstellungen des aktuellen Benutzers.Dieses Feld liest den Basisschlüssel HKEY_CURRENT_USER der Windows-Registrierung.</summary>

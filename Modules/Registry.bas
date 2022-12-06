@@ -1,4 +1,4 @@
-Attribute VB_Name = "MRegistry"
+Attribute VB_Name = "Registry"
 Option Explicit
 
 Private Const REG_NONE                  As Long = 0 ' No value type
@@ -392,7 +392,7 @@ Public Sub CloseCurrentKey()
     mCurrentKey = 0
 End Sub
 
-Public Sub CClose()
+Public Sub CloseKey()
     RegCloseKey mCurrentKey
     RegCloseKey mRootKey
     mCurrentKey = 0
@@ -408,14 +408,13 @@ Try: On Error GoTo Catch
     Exit Function
 Catch:
     ErrHandler "DeleteKey", "Key: """ & Key & """", hResult
-    'LocalErrHandler hResult, key
 End Function
 
 Public Sub MoveKey(OldName As String, NewName As String, Delete As Boolean)
   'ToDo
 End Sub
 
-'vv########################  Für Hive-File  ###################################
+' v ############################## v '   For Hive-File   ' v ############################## v '
 Public Function LoadKey(Key As String, FileName As String) As Boolean
   'ToDo
 End Function
@@ -440,7 +439,7 @@ Public Function HasSubKeys() As Boolean
   'ToDo
 End Function
 
-' v ########################### v '    concerning Values    ' v ########################## v '
+' v ############################## v '    concerning Values    ' v ############################## v '
 Public Function ValueExists(Name As String) As Boolean
 Try: On Error GoTo Catch
     Dim HandleKey As LongPtr: HandleKey = mCurrentKey
@@ -459,7 +458,6 @@ Try: On Error GoTo Catch
     ValueExistsNoClose = (lResult = ERROR_SUCCESS)
     If ValueExistsNoClose Then
         mCurrentKey = HandleKey
-    'Else: GoTo Catch
     End If
     Exit Function
 Catch:
@@ -487,7 +485,7 @@ Try: On Error GoTo Catch
 Catch:
     ErrHandler "RenameValue", "OldName: """ & OldName & """" & "; NewName: """ & NewName & """" ', hr
 End Sub
-' ^ ########################### ^ '    according to Values    ' ^ ########################## ^ '
+' ^ ########################### ^ '    concerning Values    ' ^ ########################## ^ '
 
 
 
@@ -668,15 +666,15 @@ Public Function ReadInteger(Name As String) As Long
     Dim LngVal As Long
     If GetValue(mCurrentPath, Name, LngVal) Then
         ReadInteger = LngVal
-    Else
-        MsgBox "Wert: """ & Name & """ konnte nicht gelesen werden"
+    'Else
+        'MsgBox "Wert: """ & Name & """ konnte nicht gelesen werden"
     End If
 End Function
 
-Public Sub WriteInteger(Name As String, Value As Long)
+Public Sub WriteInteger(Name As String, ByVal Value As Long)
     Dim LngVal As Long: LngVal = Value
     If Not SetValue(mRootKey, mCurrentPath, Name, LngVal) Then
-        MsgBox "Wert: """ & Name & """ konnte nicht geschrieben werden"
+        'MsgBox "Wert: """ & Name & """ konnte nicht geschrieben werden"
     End If
 End Sub
 
@@ -684,15 +682,15 @@ Public Function ReadString(Name As String) As String
     Dim StrVal As String
     If GetValue(mCurrentPath, Name, StrVal) Then
         ReadString = StrVal
-    Else
-        MsgBox "Wert: """ & Name & """ konnte nicht gelesen werden"
+    'Else
+        'MsgBox "Wert: """ & Name & """ konnte nicht gelesen werden"
     End If
 End Function
 
-Public Sub WriteString(Name As String, Value As String)
+Public Sub WriteString(Name As String, ByVal Value As String)
     Dim StrVal As String: StrVal = Value
     If Not SetValue(mRootKey, mCurrentPath, Name, StrVal) Then
-        MsgBox "Wert: """ & Name & """ konnte nicht geschrieben werden"
+        'MsgBox "Wert: """ & Name & """ konnte nicht geschrieben werden"
     End If
 End Sub
 
