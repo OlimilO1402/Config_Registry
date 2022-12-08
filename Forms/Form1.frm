@@ -41,8 +41,11 @@ Begin VB.Form FMain
       ItemData        =   "Form1.frx":1782
       Left            =   0
       List            =   "Form1.frx":1784
+      OLEDragMode     =   1  'Automatisch
+      OLEDropMode     =   1  'Manuell
       TabIndex        =   0
-      Top             =   750
+      ToolTipText     =   "Press Del to delete, drag'n'drop vbp-files from file-explorer"
+      Top             =   720
       Width           =   9735
    End
    Begin VB.Label LblCaption 
@@ -62,28 +65,61 @@ Begin VB.Form FMain
       Top             =   420
       Width           =   3495
    End
-   Begin VB.Menu mnuRegistry 
-      Caption         =   "Registry"
-      Begin VB.Menu mnuRegistryRecentVBPFilesRead 
-         Caption         =   "Read Recent VBP-Files"
-      End
-      Begin VB.Menu mnuRegistryRecentVBPFilesWrite 
-         Caption         =   "Write Recent VBP-Files"
-      End
-   End
    Begin VB.Menu mnuFile 
-      Caption         =   "File"
+      Caption         =   "&File"
+      Begin VB.Menu mnuFileRecentVBPFilesRead 
+         Caption         =   "Read Recent VBP-Files From Registry"
+         Shortcut        =   ^O
+      End
+      Begin VB.Menu mnuFileRecentVBPFilesWrite 
+         Caption         =   "Write Recent VBP-Files To Registry"
+         Shortcut        =   ^S
+      End
+      Begin VB.Menu mnuFileSep1 
+         Caption         =   "-"
+      End
       Begin VB.Menu mnuFileExists 
          Caption         =   "Exists?"
+         Shortcut        =   ^E
+      End
+      Begin VB.Menu mnuFileSelectedWrite 
+         Caption         =   "Write Selected To Registry"
       End
       Begin VB.Menu mnuFileDelete 
          Caption         =   "Delete From List"
       End
+      Begin VB.Menu mnuFileSep2 
+         Caption         =   "-"
+      End
       Begin VB.Menu mnuFileHowManyDeleted 
          Caption         =   "How Many Deleted Files"
+         Shortcut        =   ^H
       End
       Begin VB.Menu mnuFileAddDelAtEnd 
          Caption         =   "Add All Deleted Files"
+         Shortcut        =   ^A
+      End
+      Begin VB.Menu mnuFileSep3 
+         Caption         =   "-"
+      End
+      Begin VB.Menu mnuFileExit 
+         Caption         =   "Exit"
+         Shortcut        =   ^X
+      End
+   End
+   Begin VB.Menu mnuEdit 
+      Caption         =   "&Edit"
+      Begin VB.Menu mnuEditCopyListToCB 
+         Caption         =   "&Copy List To ClipBoard"
+         Shortcut        =   ^C
+      End
+      Begin VB.Menu mnuEditMoveUp 
+         Caption         =   "Move &Up ^"
+         Shortcut        =   ^U
+      End
+      Begin VB.Menu mnuEditMoveDown 
+         Caption         =   "Move &Down v"
+         Shortcut        =   ^D
       End
    End
 End
@@ -115,11 +151,44 @@ Private Sub Form_Resize()
     If W > 0 And H > 0 Then List1.Move L, T, W, H
 End Sub
 
-Private Sub mnuFileHowManyDeleted_Click()
-    MsgBox "Number of entries in the list of deleted files: " & m_DelFiles.Count
+Private Sub List1_OLEStartDrag(Data As DataObject, AllowedEffects As Long)
+    Dim i As Long: i = List1.ListIndex
+    Dim s As String: s = List1.List(i)
+    s = ParseFileName(s)
+    Data.Clear
+    Data.Files.Add s
+    Data.SetData , vbCFFiles
 End Sub
 
-Private Sub mnuRegistryRecentVBPFilesRead_Click()
+Sub UpdateData(ByVal i As Integer, ByVal sPFN As String)
+    'If i < 1 And 50 < i Then Exit Sub 'i is outside range
+    Dim PFN As PathFileName: Set PFN = m_VbpFiles.Item(i)
+    PFN.Value = sPFN
+    UpdateView i, PFN
+End Sub
+
+Sub UpdateView(Optional ByVal i As Integer = -1, Optional ByVal PFN As PathFileName = Nothing)
+    If 1 <= i And i <= 50 Then
+        If PFN Is Nothing Then Set PFN = m_VbpFiles.Item(i)
+        List1.List(i - 1) = Format(i, PFN)
+    Else
+        List1.Clear
+        For i = 1 To m_VbpFiles.Count
+            Set PFN = m_VbpFiles.Item(i)
+            List1.AddItem Format(i, PFN)
+        Next
+    End If
+End Sub
+
+Function Format(ByVal i As Integer, ByVal PFN As PathFileName) As String
+    Format = Int_ToStr2(i) & ": | " & IIf(PFN.Exists, " Yes  ", "  No  ") & " | " & PFN.Value
+End Function
+Function Int_ToStr2(i As Integer) As String
+    Int_ToStr2 = CStr(i): If Len(Int_ToStr2) < 2 Then Int_ToStr2 = "0" & Int_ToStr2
+End Function
+
+' v ############################## v '    mnuFile    ' v ############################## v '
+Private Sub mnuFileRecentVBPFilesRead_Click()
 Try: On Error GoTo Catch
     Registry.RootKey = HKEY_CURRENT_USER
     If Not Registry.OpenKey(m_regKey, False) Then
@@ -133,20 +202,11 @@ Try: On Error GoTo Catch
     Dim c As Integer: c = 100 'Registry.GetKeyCount
     Do
         i = i + 1
-        'Dim bV As Boolean: bV = Registry.ValueExistsNoClose(CStr(i))
-        'If Registry.ValueExists(CStr(i)) Then
-        'If bV Then
-            s = Registry.ReadString(CStr(i))
-            If Len(s) Then
-                Set PFN = MNew.PathFileName(s)
-                m_VbpFiles.Add PFN
-            End If
-            
-            'Set pfn = MNew.PathFileName(s)
-            's = Int_ToStr2(i) & ": | " & IIf(pfn.Exists, " Yes  ", "  No  ") & " | " & s
-            'List1.AddItem Format(i, pfn)
-        'End If
-        'Registry.CloseCurrentKey
+        s = Registry.ReadString(CStr(i))
+        If Len(s) Then
+            Set PFN = MNew.PathFileName(s)
+            m_VbpFiles.Add PFN
+        End If
     Loop Until i >= c
     GoTo Finally
 Catch:
@@ -156,69 +216,34 @@ Finally:
     UpdateView
 End Sub
 
-Sub VbpFiles_Delete()
-    
-End Sub
-
-Sub UpdateData(ByVal i As Integer, ByVal sPFN As String)
-    If i < 1 And 50 < i Then Exit Sub 'i is outside range
-    Dim PFN As PathFileName: Set PFN = m_VbpFiles.item(i)
-    PFN.Value = sPFN
-    UpdateView i, PFN
-End Sub
-
-Sub UpdateView(Optional ByVal i As Integer = -1, Optional ByVal PFN As PathFileName = Nothing)
-    If 1 <= i And i <= 50 Then
-        If PFN Is Nothing Then Set PFN = m_VbpFiles.item(i)
-        List1.list(i - 1) = Format(i, PFN)
-    Else
-        List1.Clear
-        For i = 1 To m_VbpFiles.Count
-            Set PFN = m_VbpFiles.item(i)
-            List1.AddItem Format(i, PFN)
-        Next
-    End If
-End Sub
-
-Function Format(ByVal i As Integer, ByVal PFN As PathFileName) As String
-    Format = Int_ToStr2(i) & ": | " & IIf(PFN.Exists, " Yes  ", "  No  ") & " | " & PFN.Value
-End Function
-Function Int_ToStr2(i As Integer) As String
-    Int_ToStr2 = CStr(i): If Len(Int_ToStr2) < 2 Then Int_ToStr2 = "0" & Int_ToStr2
-End Function
-
-Private Sub mnuRegistryRecentVBPFilesWrite_Click()
+Private Sub mnuFileRecentVBPFilesWrite_Click()
+Try: On Error GoTo Catch
     Registry.RootKey = HKEY_CURRENT_USER
     If Not Registry.OpenKey(m_regKey, True) Then
         MsgBox "Could not open registry key: " & m_regKey
         Exit Sub
     End If
-    Dim i As Long, c As Long: c = List1.ListCount
-    For i = 0 To c - 1
-        Registry.WriteString CStr(i + 1), ParseFileName(List1.list(i))
+    Dim s As String, PFN As PathFileName
+    Dim i As Long, c As Long: c = m_VbpFiles.Count
+    For i = 1 To c '- 1
+        Set PFN = m_VbpFiles.Item(i)
+        s = PFN.Value
+        Registry.WriteString CStr(i), s
     Next
-Try: On Error GoTo Catch
-    If c < 50 Then
-        For i = c To 50
-            Registry.WriteString CStr(i + 1), ""
-        Next
-    End If
     GoTo Finally
 Catch:
+    ErrHandler "mnuRegistryRecentVBPFilesWrite", "i: " & i & " c: " & c & vbCrLf & "RegKey: " & m_regKey & vbCrLf & s
 Finally:
     Registry.CloseKey
 End Sub
 
 Private Sub mnuFileExists_Click()
     If List1.ListCount = 0 Then
-        MsgBox "The list is empty, first click the menu item:" & vbCrLf & """" & mnuRegistry.Caption & """ -> """ & mnuRegistryRecentVBPFilesRead.Caption & """"
+        MsgBox "The list is empty, first click the menu item:" & vbCrLf & """" & mnuFile.Caption & """ -> """ & mnuFileRecentVBPFilesRead.Caption & """"
         Exit Sub
     End If
     Dim s As String
-    'should we take the filename from the listbox,
-    's = Text1.Text = ListBox_ParseFileName(List1)
-    'or should we take it directly from the textbox?
-    s = Text1.text
+    s = Text1.Text
     Dim PFN As PathFileName: Set PFN = MNew.PathFileName(s)
     If PFN.IsPath Then
         If PFN.PathExists Then
@@ -233,40 +258,98 @@ Private Sub mnuFileExists_Click()
     End If
 End Sub
 
-Private Sub mnuFileDelete_Click()
-    If List1.ListCount = 0 Then
-        MsgBox "The list is empty, first click the menu item:" & vbCrLf & """" & mnuRegistry.Caption & """ -> """ & mnuRegistryRecentVBPFilesRead.Caption & """"
+Private Sub mnuFileSelectedWrite_Click()
+Try: On Error GoTo Catch
+    Dim i As Long: i = List1.ListIndex
+    If i < 0 Then
+        MsgBox "Select item first"
         Exit Sub
     End If
+    Dim s As String, PFN As PathFileName: Set PFN = m_VbpFiles.Item(i + 1)
+    Registry.RootKey = HKEY_CURRENT_USER
+    If Not Registry.OpenKey(m_regKey, True) Then
+        MsgBox "Could not open registry key: " & m_regKey
+        Exit Sub
+    End If
+    s = PFN.Value
+    Registry.WriteString CStr(i + 1), s
+    GoTo Finally
+Catch:
+    ErrHandler "mnuFileSelectedWrite_Click", "i: " & i & vbCrLf & vbCrLf & s
+Finally:
+    Registry.CloseKey
+End Sub
+
+Private Sub mnuFileDelete_Click()
     List1_KeyDown KeyCodeConstants.vbKeyDelete, 0
-'    Dim i As Long: i = List1.ListIndex
-'    If i < 0 Then
-'        MsgBox "Select entry first!"
-'        Exit Sub
-'    End If
-'    Dim pfn As PathFileName: Set pfn = MNew.PathFileName(List1.List(i))
-'    If MsgBox("Are you sure to delete this entry?" & vbCrLf & pfn.Quoted, vbOKCancel) = vbCancel Then Exit Sub
-'    If mDeletedFiles Is Nothing Then Set mDeletedFiles = New Collection
-'    mDeletedFiles.Add pfn
-'    List1.RemoveItem i
+End Sub
+
+Private Sub mnuFileHowManyDeleted_Click()
+    MsgBox "Number of entries in the list of deleted files: " & m_DelFiles.Count
 End Sub
 
 Private Sub mnuFileAddDelAtEnd_Click()
-    Dim i As Long
+    Dim i As Long, c As Long: c = m_DelFiles.Count
+    If c = 0 Then
+        MsgBox "The list of deleted files is empty"
+        Exit Sub
+    End If
     Dim PFN As PathFileName
     For i = 1 To m_DelFiles.Count '- 1
-        Set PFN = m_DelFiles.item(i)
+        Set PFN = m_DelFiles.Item(i)
         m_VbpFiles.Add PFN
     Next
     UpdateView
 End Sub
+
+Private Sub mnuFileExit_Click()
+    'ask? - just quit
+    Unload Me
+End Sub
+' ^ ############################## ^ '    mnuFile    ' ^ ############################## ^ '
+
+' v ############################## v '    mnuEdit    ' v ############################## v '
+Private Sub mnuEditCopyListToCB_Click()
+    Dim i As Long, c As Long: c = m_VbpFiles.Count
+    Dim s As String, PFN As PathFileName
+    For i = 1 To m_VbpFiles.Count
+        Set PFN = m_VbpFiles.Item(i)
+        s = s & PFN.Value & vbCrLf
+    Next
+    Clipboard.SetText s
+End Sub
+
+Private Sub mnuEditMoveUp_Click()
+    Dim i As Long: i = List1.ListIndex
+    If i < 0 Then
+        MsgBox "Select item first"
+        Exit Sub
+    End If
+    Col_MoveUp m_VbpFiles, i + 1 'collections are 1-based
+    UpdateView
+    If i < 0 Or List1.ListCount <= i + 1 Then Exit Sub
+    List1.ListIndex = i - 1
+End Sub
+
+Private Sub mnuEditMoveDown_Click()
+    Dim i As Long: i = List1.ListIndex
+    If i < 0 Then
+        MsgBox "Select item first"
+        Exit Sub
+    End If
+    Col_MoveDown m_VbpFiles, i + 1 'collections are 1-based
+    UpdateView
+    If i < 0 Or List1.ListCount <= (i + 1) Then Exit Sub
+    List1.ListIndex = i + 1
+End Sub
+' ^ ############################## ^ '    mnuEdit    ' ^ ############################## ^ '
 
 Private Sub Text1_KeyPress(KeyAscii As Integer)
     Select Case KeyAscii
     Case KeyCodeConstants.vbKeyReturn
         Dim i As Integer: i = List1.ListIndex
         If i < 0 Then Exit Sub
-        UpdateData i + 1, Text1.text
+        UpdateData i + 1, Text1.Text
         KeyAscii = 0
     End Select
 End Sub
@@ -275,23 +358,35 @@ Private Sub List1_KeyDown(KeyCode As Integer, Shift As Integer)
     Select Case KeyCode
     Case KeyCodeConstants.vbKeyDelete
         Dim i As Integer: i = List1.ListIndex
-        If i < 1 Or 50 < i Then Exit Sub 'out of bounds
-                    
-        'no we actually do not remove any object just
-        '
+        If List1.ListCount = 0 Then
+            MsgBox "The list is empty, first click the menu item:" & vbCrLf & """" & mnuFile.Caption & """ -> """ & mnuFileRecentVBPFilesRead.Caption & """"
+            Exit Sub
+        End If
+        'we save every object in the list of deleted files befor we delete from list
         Dim PFN As PathFileName
-        Set PFN = m_VbpFiles.item(i + 1)
-        m_VbpFiles.Remove i + 1
+        Set PFN = m_VbpFiles.Item(i + 1)
         m_DelFiles.Add PFN
+        m_VbpFiles.Remove i + 1
         
         UpdateView
         If List1.ListCount <= i Then i = List1.ListCount - 1
+        'set selection again
         List1.ListIndex = i
     End Select
 End Sub
 
 Private Sub List1_Click()
-    Text1.text = ParseFileName(List1.text)
+    Text1.Text = ParseFileName(List1.Text)
+End Sub
+
+Private Sub List1_OLEDragDrop(Data As DataObject, Effect As Long, Button As Integer, Shift As Integer, X As Single, Y As Single)
+    If Not Data.GetFormat(vbCFFiles) Then Exit Sub
+    Dim PFN As PathFileName: Set PFN = MNew.PathFileName(Data.Files(1))
+    If Not PFN.Exists Then Exit Sub
+    Dim ext As String: ext = LCase(PFN.Extension)
+    If ext <> ".vbp" Then MsgBox "Wrong fileformat, only vbp-files": Exit Sub
+    m_VbpFiles.Add PFN
+    UpdateView
 End Sub
 
 Function ParseFileName(ByVal s As String) As String
@@ -304,35 +399,28 @@ Try: On Error GoTo Catch
 Catch:
 End Function
 
-'Private Sub BtnCheckNDelete_Click()
-''   'BtnCheckNDelete.Caption = "Check If File Exists and ask to delete"
-'    If mDeletedFiles Is Nothing Then Set mDeletedFiles = New Collection
-'
-'    Dim i As Long, FNm As String, pfn As PathFileName
-'    Dim cn As Long, cd As Long
-'    If List1.ListCount = 0 Then
-'        MsgBox "Click the button first: " & vbCrLf & """" & BtnReadVBPRecentFiles.Caption & """"
-'        Exit Sub
-'    End If
-'    For i = List1.ListCount - 1 To 0 Step -1
-'        FNm = ParseFileName(List1.List(i))
-'        If Len(FNm) Then
-'            Set pfn = MNew.PathFileName(FNm)
-'            If pfn.Exists Then
-'                cn = cn + 1
-'            Else
-'                cd = cd + 1
-'                If MsgBox("File does not exist, delete it from the list?" & vbCrLf & pfn.Value, vbOKCancel) = vbOK Then
-'                    mDeletedFiles.Add pfn
-'                    List1.RemoveItem i
-'                End If
-'            End If
-'        End If
-'    Next
-'    If cd = 0 Then
-'        MsgBox "All files are existing, nothing to delete!"
-'    Else
-'        MsgBox cd & " files are missing, now click the button" & vbCrLf & """" & BtnWriteVBPRecentFiles.Caption & """" & vbCrLf & "Or the button" & vbCrLf & BtnAddDeletedAtEnd.Caption
-'    End If
-'End Sub
+'copy this same function to every class, form or module
+'the name of the class or form will be added automatically
+'in standard-modules the function "TypeName(Me)" will not work, so simply replace it with the name of the Module
+' v ############################## v '   Local ErrHandler   ' v ############################## v '
+Private Function ErrHandler(ByVal FuncName As String, _
+                            Optional ByVal AddInfo As String, _
+                            Optional WinApiError, _
+                            Optional bLoud As Boolean = True, _
+                            Optional bErrLog As Boolean = True, _
+                            Optional vbDecor As VbMsgBoxStyle = vbOKCancel, _
+                            Optional bRetry As Boolean) As VbMsgBoxResult
+
+    If bRetry Then
+
+        ErrHandler = MessErrorRetry(TypeName(Me), FuncName, AddInfo, WinApiError, bErrLog)
+
+    Else
+
+        ErrHandler = MessError(TypeName(Me), FuncName, AddInfo, WinApiError, bLoud, bErrLog, vbDecor)
+
+    End If
+
+End Function
+
 

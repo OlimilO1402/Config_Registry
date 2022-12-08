@@ -745,8 +745,9 @@ Private Function SetValue(root As LongPtr, Key As String, field As String, Value
         L = CLng(Value)
         lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, L, 4)
     Case vbString
-        s = CStr(Value)
-        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_SZ, StrPtr(s), Len(s) + 1)    ' +1 for the trailing 0
+        's = StrConv(CStr(Value), vbFromUnicode) & vbNullString
+        s = CStr(Value) & vbNullString
+        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_SZ, StrPtr(s), LenB(s)) ' + 1)    ' +1 for the trailing 0
         ' here you may save or change any other data type
     End Select
     RegCloseKey keyhandle
