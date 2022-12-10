@@ -345,13 +345,20 @@ End Sub
 ' ^ ############################## ^ '    mnuEdit    ' ^ ############################## ^ '
 
 Private Sub Text1_KeyPress(KeyAscii As Integer)
-    Select Case KeyAscii
-    Case KeyCodeConstants.vbKeyReturn
-        Dim i As Integer: i = List1.ListIndex
-        If i < 0 Then Exit Sub
+    If KeyAscii <> KeyCodeConstants.vbKeyReturn Then Exit Sub
+    KeyAscii = 0
+    Dim s As String, m As String
+    Dim c As Integer: c = List1.ListCount: m = m & IIf(c = 0, "The list ist empty. ", "")
+    Dim i As Integer: i = List1.ListIndex: m = m & IIf(i < 0, "Nothing is selected. ", "")
+    If i < 0 Then
+        s = Text1.Text
+        If MsgBox(m & vbCrLf & "Do you want to add this entry? " & vbCrLf & s) = vbCancel Then Exit Sub
+        Dim PFN As PathFileName: Set PFN = MNew.PathFileName(s)
+        m_VbpFiles.Add PFN
+        UpdateView
+    Else
         UpdateData i + 1, Text1.Text
-        KeyAscii = 0
-    End Select
+    End If
 End Sub
 
 Private Sub List1_KeyDown(KeyCode As Integer, Shift As Integer)
