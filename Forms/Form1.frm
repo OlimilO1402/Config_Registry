@@ -122,6 +122,12 @@ Begin VB.Form FMain
          Shortcut        =   ^D
       End
    End
+   Begin VB.Menu mnuHelp 
+      Caption         =   "?"
+      Begin VB.Menu mnuHelpInfo 
+         Caption         =   "Info"
+      End
+   End
 End
 Attribute VB_Name = "FMain"
 Attribute VB_GlobalNameSpace = False
@@ -141,14 +147,14 @@ Private Sub Form_Load()
 End Sub
 
 Private Sub Form_Resize()
-    Dim L As Single
+    Dim l As Single
     Dim T As Single: T = Text1.Top
     Dim W As Single: W = Me.ScaleWidth
     Dim H As Single: H = Text1.Height
-    If W > 0 And H > 0 Then Text1.Move L, T, W, H
+    If W > 0 And H > 0 Then Text1.Move l, T, W, H
     T = List1.Top
     H = Me.ScaleHeight - T
-    If W > 0 And H > 0 Then List1.Move L, T, W, H
+    If W > 0 And H > 0 Then List1.Move l, T, W, H
 End Sub
 
 Private Sub List1_OLEStartDrag(Data As DataObject, AllowedEffects As Long)
@@ -162,26 +168,26 @@ End Sub
 
 Sub UpdateData(ByVal i As Integer, ByVal sPFN As String)
     'If i < 1 And 50 < i Then Exit Sub 'i is outside range
-    Dim PFN As PathFileName: Set PFN = m_VbpFiles.Item(i)
-    PFN.Value = sPFN
-    UpdateView i, PFN
+    Dim pfn As PathFileName: Set pfn = m_VbpFiles.Item(i)
+    pfn.Value = sPFN
+    UpdateView i, pfn
 End Sub
 
-Sub UpdateView(Optional ByVal i As Integer = -1, Optional ByVal PFN As PathFileName = Nothing)
+Sub UpdateView(Optional ByVal i As Integer = -1, Optional ByVal pfn As PathFileName = Nothing)
     If 1 <= i And i <= 50 Then
-        If PFN Is Nothing Then Set PFN = m_VbpFiles.Item(i)
-        List1.List(i - 1) = Format(i, PFN)
+        If pfn Is Nothing Then Set pfn = m_VbpFiles.Item(i)
+        List1.List(i - 1) = Format(i, pfn)
     Else
         List1.Clear
         For i = 1 To m_VbpFiles.Count
-            Set PFN = m_VbpFiles.Item(i)
-            List1.AddItem Format(i, PFN)
+            Set pfn = m_VbpFiles.Item(i)
+            List1.AddItem Format(i, pfn)
         Next
     End If
 End Sub
 
-Function Format(ByVal i As Integer, ByVal PFN As PathFileName) As String
-    Format = Int_ToStr2(i) & ": | " & IIf(PFN.Exists, " Yes  ", "  No  ") & " | " & PFN.Value
+Function Format(ByVal i As Integer, ByVal pfn As PathFileName) As String
+    Format = Int_ToStr2(i) & ": | " & IIf(pfn.Exists, " Yes  ", "  No  ") & " | " & pfn.Value
 End Function
 Function Int_ToStr2(i As Integer) As String
     Int_ToStr2 = CStr(i): If Len(Int_ToStr2) < 2 Then Int_ToStr2 = "0" & Int_ToStr2
@@ -198,14 +204,14 @@ Try: On Error GoTo Catch
     List1.Clear
     Set m_VbpFiles = New Collection
     'Set m_DelFiles = New Collection
-    Dim i As Integer, s As String, PFN As PathFileName
+    Dim i As Integer, s As String, pfn As PathFileName
     Dim c As Integer: c = 100 'Registry.GetKeyCount
     Do
         i = i + 1
         s = Registry.ReadString(CStr(i))
         If Len(s) Then
-            Set PFN = MNew.PathFileName(s)
-            m_VbpFiles.Add PFN
+            Set pfn = MNew.PathFileName(s)
+            m_VbpFiles.Add pfn
         End If
     Loop Until i >= c
     GoTo Finally
@@ -223,11 +229,11 @@ Try: On Error GoTo Catch
         MsgBox "Could not open registry key: " & m_regKey
         Exit Sub
     End If
-    Dim s As String, PFN As PathFileName
+    Dim s As String, pfn As PathFileName
     Dim i As Long, c As Long: c = m_VbpFiles.Count
     For i = 1 To c '- 1
-        Set PFN = m_VbpFiles.Item(i)
-        s = PFN.Value
+        Set pfn = m_VbpFiles.Item(i)
+        s = pfn.Value
         Registry.WriteString CStr(i), s
     Next
     GoTo Finally
@@ -244,16 +250,16 @@ Private Sub mnuFileExists_Click()
     End If
     Dim s As String
     s = Text1.Text
-    Dim PFN As PathFileName: Set PFN = MNew.PathFileName(s)
-    If PFN.IsPath Then
-        If PFN.PathExists Then
-            MsgBox "Yes, path does exist:" & vbCrLf & PFN.Value
+    Dim pfn As PathFileName: Set pfn = MNew.PathFileName(s)
+    If pfn.IsPath Then
+        If pfn.PathExists Then
+            MsgBox "Yes, path does exist:" & vbCrLf & pfn.Value
         End If
     Else
-        If PFN.Exists Then
-            MsgBox "Yes, file does exist:" & vbCrLf & PFN.Value
+        If pfn.Exists Then
+            MsgBox "Yes, file does exist:" & vbCrLf & pfn.Value
         Else
-            MsgBox "No, file does not exist:" & vbCrLf & PFN.Value
+            MsgBox "No, file does not exist:" & vbCrLf & pfn.Value
         End If
     End If
 End Sub
@@ -265,13 +271,13 @@ Try: On Error GoTo Catch
         MsgBox "Select item first"
         Exit Sub
     End If
-    Dim s As String, PFN As PathFileName: Set PFN = m_VbpFiles.Item(i + 1)
+    Dim s As String, pfn As PathFileName: Set pfn = m_VbpFiles.Item(i + 1)
     Registry.RootKey = HKEY_CURRENT_USER
     If Not Registry.OpenKey(m_regKey, True) Then
         MsgBox "Could not open registry key: " & m_regKey
         Exit Sub
     End If
-    s = PFN.Value
+    s = pfn.Value
     Registry.WriteString CStr(i + 1), s
     GoTo Finally
 Catch:
@@ -294,10 +300,10 @@ Private Sub mnuFileAddDelAtEnd_Click()
         MsgBox "The list of deleted files is empty"
         Exit Sub
     End If
-    Dim PFN As PathFileName
+    Dim pfn As PathFileName
     For i = 1 To m_DelFiles.Count '- 1
-        Set PFN = m_DelFiles.Item(i)
-        m_VbpFiles.Add PFN
+        Set pfn = m_DelFiles.Item(i)
+        m_VbpFiles.Add pfn
     Next
     UpdateView
 End Sub
@@ -311,10 +317,10 @@ End Sub
 ' v ############################## v '    mnuEdit    ' v ############################## v '
 Private Sub mnuEditCopyListToCB_Click()
     Dim i As Long, c As Long: c = m_VbpFiles.Count
-    Dim s As String, PFN As PathFileName
+    Dim s As String, pfn As PathFileName
     For i = 1 To m_VbpFiles.Count
-        Set PFN = m_VbpFiles.Item(i)
-        s = s & PFN.Value & vbCrLf
+        Set pfn = m_VbpFiles.Item(i)
+        s = s & pfn.Value & vbCrLf
     Next
     Clipboard.SetText s
 End Sub
@@ -344,6 +350,10 @@ Private Sub mnuEditMoveDown_Click()
 End Sub
 ' ^ ############################## ^ '    mnuEdit    ' ^ ############################## ^ '
 
+Private Sub mnuHelpInfo_Click()
+    MsgBox App.EXEName & " v" & App.Major & "." & App.Minor & "." & App.Revision & vbCrLf & App.FileDescription
+End Sub
+
 Private Sub Text1_KeyPress(KeyAscii As Integer)
     If KeyAscii <> KeyCodeConstants.vbKeyReturn Then Exit Sub
     KeyAscii = 0
@@ -353,8 +363,8 @@ Private Sub Text1_KeyPress(KeyAscii As Integer)
     If i < 0 Then
         s = Text1.Text
         If MsgBox(m & vbCrLf & "Do you want to add this entry? " & vbCrLf & s) = vbCancel Then Exit Sub
-        Dim PFN As PathFileName: Set PFN = MNew.PathFileName(s)
-        m_VbpFiles.Add PFN
+        Dim pfn As PathFileName: Set pfn = MNew.PathFileName(s)
+        m_VbpFiles.Add pfn
         UpdateView
     Else
         UpdateData i + 1, Text1.Text
@@ -370,9 +380,9 @@ Private Sub List1_KeyDown(KeyCode As Integer, Shift As Integer)
             Exit Sub
         End If
         'we save every object in the list of deleted files befor we delete from list
-        Dim PFN As PathFileName
-        Set PFN = m_VbpFiles.Item(i + 1)
-        m_DelFiles.Add PFN
+        Dim pfn As PathFileName
+        Set pfn = m_VbpFiles.Item(i + 1)
+        m_DelFiles.Add pfn
         m_VbpFiles.Remove i + 1
         
         UpdateView
@@ -388,11 +398,11 @@ End Sub
 
 Private Sub List1_OLEDragDrop(Data As DataObject, Effect As Long, Button As Integer, Shift As Integer, X As Single, Y As Single)
     If Not Data.GetFormat(vbCFFiles) Then Exit Sub
-    Dim PFN As PathFileName: Set PFN = MNew.PathFileName(Data.Files(1))
-    If Not PFN.Exists Then Exit Sub
-    Dim ext As String: ext = LCase(PFN.Extension)
+    Dim pfn As PathFileName: Set pfn = MNew.PathFileName(Data.Files(1))
+    If Not pfn.Exists Then Exit Sub
+    Dim ext As String: ext = LCase(pfn.Extension)
     If ext <> ".vbp" Then MsgBox "Wrong fileformat, only vbp-files": Exit Sub
-    m_VbpFiles.Add PFN
+    m_VbpFiles.Add pfn
     UpdateView
 End Sub
 

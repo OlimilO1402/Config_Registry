@@ -19,6 +19,10 @@ Private Const REG_OPTION_BACKUP_RESTORE As Long = &H4& ' If this flag is set, th
 Private Const REG_CREATED_NEW_KEY       As Long = &H1& ' The key did not exist and was created.
 Private Const REG_OPENED_EXISTING_KEY   As Long = &H2& ' The key existed and was simply opened without being changed.
 
+Private Const ERROR_NO_MORE_ITEMS       As Long = 259&
+Private Const ERROR_MORE_DATA           As Long = 234&
+Private Const MAX_KEY_LENGTH            As Long = 255&
+
 Private Const GW_CHILD     As Long = 5
 Private Const GW_HWNDFIRST As Long = 0
 Private Const GW_HWNDLAST  As Long = 1
@@ -281,6 +285,34 @@ Finally:
     Registry.CloseKey
 End Sub
 
+Private Function RegistryHive_ToStr(e As RegistryHive) As String
+    Dim s As String
+    Select Case e
+    Case HKEY_CLASSES_ROOT:     s = "HKEY_CLASSES_ROOT"
+    Case HKEY_CURRENT_USER:     s = "HKEY_CURRENT_USER"
+    Case HKEY_LOCAL_MACHINE:    s = "HKEY_LOCAL_MACHINE"
+    Case HKEY_USERS:            s = "HKEY_USERS"
+    Case HKEY_PERFORMANCE_DATA: s = "HKEY_PERFORMANCE_DATA"
+    Case HKEY_CURRENT_CONFIG:   s = "HKEY_CURRENT_CONFIG"
+    Case HKEY_DYN_DATA:         s = "HKEY_DYN_DATA"
+    End Select
+    RegistryHive_ToStr = s
+End Function
+Private Function RegistryHive_Parse(ByVal s As String) As RegistryHive
+    s = UCase(s)
+    Dim e As RegistryHive
+    Select Case s
+    Case "HKEY_CLASSES_ROOT", "HKCR":     e = HKEY_CLASSES_ROOT
+    Case "HKEY_CURRENT_USER", "HKCU":     e = HKEY_CURRENT_USER
+    Case "HKEY_LOCAL_MACHINE", "HKLM":    e = HKEY_LOCAL_MACHINE
+    Case "HKEY_USERS", "HKU":             e = HKEY_USERS
+    Case "HKEY_PERFORMANCE_DATA", "HKPD": e = HKEY_PERFORMANCE_DATA
+    Case "HKEY_CURRENT_CONFIG", "HKCC":   e = HKEY_CURRENT_CONFIG
+    Case "HKEY_DYN_DATA", "HKDD":         e = HKEY_DYN_DATA
+    End Select
+    RegistryHive_Parse = e
+End Function
+
 ' v ########################## v ' Properties ' v ########################## v '
 Public Property Get RootKey() As RegistryHive
     RootKey = mRootKey
@@ -288,13 +320,16 @@ End Property
 Public Property Let RootKey(Value As RegistryHive)
     mRootKey = Value
 End Property
+Public Property Get RootKeyToStr() As String
+    RootKeyToStr = RegistryHive_ToStr(mRootKey)
+End Property
 
 Public Property Get CurrentKey() As LongPtr ' ReadOnly
     CurrentKey = mCurrentKey
 End Property
 
 Public Property Get CurrentPath() As String ' ReadOnly
-    CurrentPath = mCurrentPath
+    CurrentPath = RootKeyToStr & "\" & mCurrentPath
 End Property
 
 Public Property Get LazyWrite() As Boolean
@@ -333,10 +368,12 @@ Try: On Error GoTo Catch
     If KeyExistsNoClose Then
         mCurrentKey = HandleKey
         mCurrentPath = Key
+    Else
+        GoTo Catch
     End If
     Exit Function
 Catch:
-    ErrHandler "KeyExistsNoClose", "key: """ & Key & """", lResult
+    ErrHandler "KeyExistsNoClose", "Path: " & CurrentPath & " key: """ & Key & """", lResult
 End Function
 
 Public Function CreateKey(Key As String) As Boolean
@@ -548,6 +585,11 @@ End Sub
 '    return array;
 '}
 
+'Private Const ERROR_SUCCESS             As Long = 0&
+'Private Const ERROR_NO_MORE_ITEMS       As Long = 259&
+'Private Const ERROR_MORE_DATA           As Long = 234&
+
+
 Public Sub GetKeyNames(StrCol As Collection)
 Try: On Error GoTo Catch
     If StrCol Is Nothing Then Set StrCol = New Collection
@@ -555,14 +597,17 @@ Try: On Error GoTo Catch
     Dim ft As FILETIME
     If c > 0 Then
         'ReDim arr(0 To c - 1) As String
-        Dim cbName As Long: cbName = 2000
-        Dim s As String: s = Space(cbName)
+        Dim cbName As Long
+        Dim s As String
         Dim i As Long, hr As Long
         For i = 0 To c - 1
+            cbName = MAX_KEY_LENGTH
+            s = Space(cbName)
             hr = RegEnumKeyExW(mCurrentKey, i, StrPtr(s), VarPtr(cbName), 0&, 0&, 0&, VarPtr(ft))
-            If hr <> 0 Then
-                'ErrHandler "GetKeyNames", "RegEnumKeyEx(" & mCurrentKey & ")", hr
+            If hr <> ERROR_SUCCESS And hr <> ERROR_NO_MORE_ITEMS Then
+                GoTo Catch
             End If
+            s = Left(s, cbName)
             StrCol.Add s
         Next
     End If
