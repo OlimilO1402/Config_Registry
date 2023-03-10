@@ -755,7 +755,7 @@ Private Function GetValue(Key As String, ValNam As String, VarVal As Variant) As
     GetValue = (lResult = ERROR_SUCCESS)
     If lResult <> ERROR_SUCCESS Then Exit Function ' Field does not exist
     Select Case dwType
-    Case REG_SZ       ' nullterminated String
+    Case REG_SZ, REG_EXPAND_SZ       ' nullterminated String
         Buffer = Space$(buffersize + 1)
         lResult = RegQueryValueExW(mCurrentKey, StrPtr(ValNam), 0&, VarPtr(dwType), StrPtr(Buffer), VarPtr(buffersize))
         GetValue = (lResult = ERROR_SUCCESS)
@@ -779,7 +779,7 @@ End Function
 
 Private Function SetValue(root As LongPtr, Key As String, field As String, Value As Variant) As Boolean
     Dim lResult As Long, keyhandle As LongPtr
-    Dim s As String, L As Long
+    Dim s As String, l As Long
     lResult = RegOpenKeyExW(root, StrPtr(Key), 0, KEY_ALL_ACCESS, VarPtr(keyhandle))
     If lResult <> ERROR_SUCCESS Then
         SetValue = False
@@ -787,8 +787,8 @@ Private Function SetValue(root As LongPtr, Key As String, field As String, Value
     End If
     Select Case VarType(Value)
     Case vbInteger, vbLong
-        L = CLng(Value)
-        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, L, 4)
+        l = CLng(Value)
+        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, l, 4)
     Case vbString
         's = StrConv(CStr(Value), vbFromUnicode) & vbNullString
         s = CStr(Value) & vbNullString
@@ -832,7 +832,7 @@ Public Function GetKeyValue(KeyRoot As LongPtr, keyName As String, SubKeyRef As 
     ' Schlüsselwerttyp für Konvertierung bestimmen...
     '------------------------------------------------------------
     Select Case KeyValType                                  ' Datentypen durchsuchen...
-    Case REG_SZ                                             ' Zeichenfolge für Registrierungsschlüsseldatentyp
+    Case REG_SZ, REG_EXPAND_SZ                              ' Zeichenfolge für Registrierungsschlüsseldatentyp
         KeyVal = tmpVal                                     ' Zeichenfolgenwert kopieren
     Case REG_DWORD                                          ' Registrierungsschlüsseldatentyp DWORD
         Dim i As Long                                           ' Schleifenzähler
