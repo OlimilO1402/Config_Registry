@@ -2,6 +2,7 @@ Attribute VB_Name = "Registry"
 Option Explicit
 
 Private Const REG_NONE                  As Long = 0 ' No value type
+Private Const REG_ERROR_NONE            As Long = 0 ' &H0&
 Private Const REG_SZ                    As Long = 1 ' Unicode null terminated string
 Private Const REG_EXPAND_SZ             As Long = 2 ' Unicode null terminated string (with environment variable references)
 Private Const REG_BINARY                As Long = 3 ' Free form binary
@@ -10,6 +11,7 @@ Private Const REG_DWORD_LITTLE_ENDIAN   As Long = 4 ' yes, twice 4 ' 32-bit numb
 Private Const REG_DWORD_BIG_ENDIAN      As Long = 5 ' 32-bit number
 Private Const REG_LINK                  As Long = 6 ' Symbolic Link (unicode)
 Private Const REG_MULTI_SZ              As Long = 7 ' Multiple Unicode strings
+Private Const REGCLS_MULTIPLEUSE        As Long = 1 ' &H1&
 
 Private Const REG_OPTION_NON_VOLATILE   As Long = &H0& ' This key is not volatile; this is the default. The information is stored in a file and is preserved when the system is restarted. The RegSaveKey function saves keys that are not volatile.
 Private Const REG_OPTION_VOLATILE       As Long = &H1& ' All keys created by the function are volatile. The information is stored in memory and is not preserved when the corresponding registry hive is unloaded. For HKEY_LOCAL_MACHINE, this occurs only when the system initiates a full shutdown. For registry keys loaded by the RegLoadKey function, this occurs when the corresponding RegUnLoadKey is performed. The RegSaveKey function does not save volatile keys. This flag is ignored for keys that already exist. Note  On a user selected shutdown, a fast startup shutdown is the default behavior for the system.
@@ -214,6 +216,58 @@ Public Sub Init()
     mLazyWrite = True
     mAccess = KEY_ALL_ACCESS
 End Sub
+
+
+Public Function App_RegisterAsComServer(ByVal exePath As String, _
+                                        ByVal activatorCLSID As String) As Boolean
+    Dim Ret As Boolean
+    Dim hKey As LongPtr
+    If RegCreateKeyExW(HKeyCurrentUser, _
+                       StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID & "\LocalServer32"), _
+                       0&, _
+                       vbNullString, 0&, KEY_ALL_ACCESS, _
+                       0&, hKey, 0&) = RegErrorNone Then
+        If hKey <> 0& Then
+            If RegSetValueExW(hKey, vbNullString, _
+                              0&, RegSZ, _
+                              StrPtr(exePath & vbNullChar), _
+                              Len(exePath)) = REG_ERROR_NONE Then
+                Ret = True
+            End If
+            Call RegCloseKey(hKey)
+        End If
+    End If
+    App_RegisterAsComServer = Ret
+End Function
+
+Public Function App_UnregisterAsComServer(ByVal activatorCLSID As String) As Boolean
+    Dim Ret As Boolean
+    If RegDeleteKey(HKeyCurrentUser, _
+                    StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID & "\LocalServer32")) = REG_ERROR_NONE Then
+        If RegDeleteKeyW(HKeyCurrentUser, _
+                         StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID)) = REG_ERROR_NONE Then
+            Ret = True
+        End If
+    End If
+    App_UnregisterAsComServer = Ret
+End Function
+
+Public Function App_IsRegisteredAsComServer(ByVal activatorCLSID As String) As Boolean
+    Dim Ret As Boolean
+    Dim hKey As LongPtr
+    If RegOpenKeyExW(HKeyCurrentUser, _
+                    StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID), _
+                    0&, _
+                    KEY_QUERY_VALUE, _
+                    hKey) = REG_ERROR_NONE Then
+        If hKey <> 0& Then
+            Ret = True
+            Call RegCloseKey(hKey)
+        End If
+    End If
+    App_IsRegisteredAsComServer = Ret
+End Function
+
 
 'registers and associates a file extension to a certain program
 Public Sub RegisterShellFileTypes(ByVal FileExtension As String, _
@@ -779,7 +833,7 @@ End Function
 
 Private Function SetValue(root As LongPtr, Key As String, field As String, Value As Variant) As Boolean
     Dim lResult As Long, keyhandle As LongPtr
-    Dim s As String, l As Long
+    Dim s As String, L As Long
     lResult = RegOpenKeyExW(root, StrPtr(Key), 0, KEY_ALL_ACCESS, VarPtr(keyhandle))
     If lResult <> ERROR_SUCCESS Then
         SetValue = False
@@ -787,8 +841,8 @@ Private Function SetValue(root As LongPtr, Key As String, field As String, Value
     End If
     Select Case VarType(Value)
     Case vbInteger, vbLong
-        l = CLng(Value)
-        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, l, 4)
+        L = CLng(Value)
+        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, L, 4)
     Case vbString
         's = StrConv(CStr(Value), vbFromUnicode) & vbNullString
         s = CStr(Value) & vbNullString
