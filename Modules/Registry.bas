@@ -220,52 +220,52 @@ End Sub
 
 Public Function App_RegisterAsComServer(ByVal exePath As String, _
                                         ByVal activatorCLSID As String) As Boolean
-    Dim Ret As Boolean
+    Dim ret As Boolean
     Dim hKey As LongPtr
-    If RegCreateKeyExW(HKeyCurrentUser, _
+    If RegCreateKeyExW(HKEY_CURRENT_USER, _
                        StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID & "\LocalServer32"), _
                        0&, _
                        vbNullString, 0&, KEY_ALL_ACCESS, _
-                       0&, hKey, 0&) = RegErrorNone Then
+                       0&, hKey, 0&) = REG_ERROR_NONE Then
         If hKey <> 0& Then
             If RegSetValueExW(hKey, vbNullString, _
-                              0&, RegSZ, _
+                              0&, REG_SZ, _
                               StrPtr(exePath & vbNullChar), _
                               Len(exePath)) = REG_ERROR_NONE Then
-                Ret = True
+                ret = True
             End If
             Call RegCloseKey(hKey)
         End If
     End If
-    App_RegisterAsComServer = Ret
+    App_RegisterAsComServer = ret
 End Function
 
 Public Function App_UnregisterAsComServer(ByVal activatorCLSID As String) As Boolean
-    Dim Ret As Boolean
-    If RegDeleteKey(HKeyCurrentUser, _
+    Dim ret As Boolean
+    If RegDeleteKeyW(HKEY_CURRENT_USER, _
                     StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID & "\LocalServer32")) = REG_ERROR_NONE Then
-        If RegDeleteKeyW(HKeyCurrentUser, _
+        If RegDeleteKeyW(HKEY_CURRENT_USER, _
                          StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID)) = REG_ERROR_NONE Then
-            Ret = True
+            ret = True
         End If
     End If
-    App_UnregisterAsComServer = Ret
+    App_UnregisterAsComServer = ret
 End Function
 
 Public Function App_IsRegisteredAsComServer(ByVal activatorCLSID As String) As Boolean
-    Dim Ret As Boolean
+    Dim ret As Boolean
     Dim hKey As LongPtr
-    If RegOpenKeyExW(HKeyCurrentUser, _
+    If RegOpenKeyExW(HKEY_CURRENT_USER, _
                     StrPtr("SOFTWARE\Classes\CLSID\" & activatorCLSID), _
                     0&, _
                     KEY_QUERY_VALUE, _
                     hKey) = REG_ERROR_NONE Then
         If hKey <> 0& Then
-            Ret = True
+            ret = True
             Call RegCloseKey(hKey)
         End If
     End If
-    App_IsRegisteredAsComServer = Ret
+    App_IsRegisteredAsComServer = ret
 End Function
 
 
@@ -339,9 +339,9 @@ Finally:
     Registry.CloseKey
 End Sub
 
-Private Function RegistryHive_ToStr(e As RegistryHive) As String
+Private Function RegistryHive_ToStr(E As RegistryHive) As String
     Dim s As String
-    Select Case e
+    Select Case E
     Case HKEY_CLASSES_ROOT:     s = "HKEY_CLASSES_ROOT"
     Case HKEY_CURRENT_USER:     s = "HKEY_CURRENT_USER"
     Case HKEY_LOCAL_MACHINE:    s = "HKEY_LOCAL_MACHINE"
@@ -354,17 +354,17 @@ Private Function RegistryHive_ToStr(e As RegistryHive) As String
 End Function
 Private Function RegistryHive_Parse(ByVal s As String) As RegistryHive
     s = UCase(s)
-    Dim e As RegistryHive
+    Dim E As RegistryHive
     Select Case s
-    Case "HKEY_CLASSES_ROOT", "HKCR":     e = HKEY_CLASSES_ROOT
-    Case "HKEY_CURRENT_USER", "HKCU":     e = HKEY_CURRENT_USER
-    Case "HKEY_LOCAL_MACHINE", "HKLM":    e = HKEY_LOCAL_MACHINE
-    Case "HKEY_USERS", "HKU":             e = HKEY_USERS
-    Case "HKEY_PERFORMANCE_DATA", "HKPD": e = HKEY_PERFORMANCE_DATA
-    Case "HKEY_CURRENT_CONFIG", "HKCC":   e = HKEY_CURRENT_CONFIG
-    Case "HKEY_DYN_DATA", "HKDD":         e = HKEY_DYN_DATA
+    Case "HKEY_CLASSES_ROOT", "HKCR":     E = HKEY_CLASSES_ROOT
+    Case "HKEY_CURRENT_USER", "HKCU":     E = HKEY_CURRENT_USER
+    Case "HKEY_LOCAL_MACHINE", "HKLM":    E = HKEY_LOCAL_MACHINE
+    Case "HKEY_USERS", "HKU":             E = HKEY_USERS
+    Case "HKEY_PERFORMANCE_DATA", "HKPD": E = HKEY_PERFORMANCE_DATA
+    Case "HKEY_CURRENT_CONFIG", "HKCC":   E = HKEY_CURRENT_CONFIG
+    Case "HKEY_DYN_DATA", "HKDD":         E = HKEY_DYN_DATA
     End Select
-    RegistryHive_Parse = e
+    RegistryHive_Parse = E
 End Function
 
 ' v ########################## v ' Properties ' v ########################## v '
