@@ -1,6 +1,9 @@
 Attribute VB_Name = "Registry"
 Option Explicit
-
+'needs:
+'MPtr.bas in ..\Ptr_Pointers\Modules\MPtr.bas
+'MErr.bas in ..\Err_CorrectErrorHandling\Modules\MErr.bas
+'
 Private Const REG_NONE                  As Long = 0 ' No value type
 Private Const REG_ERROR_NONE            As Long = 0 ' &H0&
 Private Const REG_SZ                    As Long = 1 ' Unicode null terminated string
@@ -339,9 +342,9 @@ Finally:
     Registry.CloseKey
 End Sub
 
-Private Function RegistryHive_ToStr(E As RegistryHive) As String
+Private Function RegistryHive_ToStr(e As RegistryHive) As String
     Dim s As String
-    Select Case E
+    Select Case e
     Case HKEY_CLASSES_ROOT:     s = "HKEY_CLASSES_ROOT"
     Case HKEY_CURRENT_USER:     s = "HKEY_CURRENT_USER"
     Case HKEY_LOCAL_MACHINE:    s = "HKEY_LOCAL_MACHINE"
@@ -354,17 +357,17 @@ Private Function RegistryHive_ToStr(E As RegistryHive) As String
 End Function
 Private Function RegistryHive_Parse(ByVal s As String) As RegistryHive
     s = UCase(s)
-    Dim E As RegistryHive
+    Dim e As RegistryHive
     Select Case s
-    Case "HKEY_CLASSES_ROOT", "HKCR":     E = HKEY_CLASSES_ROOT
-    Case "HKEY_CURRENT_USER", "HKCU":     E = HKEY_CURRENT_USER
-    Case "HKEY_LOCAL_MACHINE", "HKLM":    E = HKEY_LOCAL_MACHINE
-    Case "HKEY_USERS", "HKU":             E = HKEY_USERS
-    Case "HKEY_PERFORMANCE_DATA", "HKPD": E = HKEY_PERFORMANCE_DATA
-    Case "HKEY_CURRENT_CONFIG", "HKCC":   E = HKEY_CURRENT_CONFIG
-    Case "HKEY_DYN_DATA", "HKDD":         E = HKEY_DYN_DATA
+    Case "HKEY_CLASSES_ROOT", "HKCR":     e = HKEY_CLASSES_ROOT
+    Case "HKEY_CURRENT_USER", "HKCU":     e = HKEY_CURRENT_USER
+    Case "HKEY_LOCAL_MACHINE", "HKLM":    e = HKEY_LOCAL_MACHINE
+    Case "HKEY_USERS", "HKU":             e = HKEY_USERS
+    Case "HKEY_PERFORMANCE_DATA", "HKPD": e = HKEY_PERFORMANCE_DATA
+    Case "HKEY_CURRENT_CONFIG", "HKCC":   e = HKEY_CURRENT_CONFIG
+    Case "HKEY_DYN_DATA", "HKDD":         e = HKEY_DYN_DATA
     End Select
-    RegistryHive_Parse = E
+    RegistryHive_Parse = e
 End Function
 
 ' v ########################## v ' Properties ' v ########################## v '
@@ -833,7 +836,7 @@ End Function
 
 Private Function SetValue(root As LongPtr, Key As String, field As String, Value As Variant) As Boolean
     Dim lResult As Long, keyhandle As LongPtr
-    Dim s As String, L As Long
+    Dim s As String, l As Long
     lResult = RegOpenKeyExW(root, StrPtr(Key), 0, KEY_ALL_ACCESS, VarPtr(keyhandle))
     If lResult <> ERROR_SUCCESS Then
         SetValue = False
@@ -841,8 +844,8 @@ Private Function SetValue(root As LongPtr, Key As String, field As String, Value
     End If
     Select Case VarType(Value)
     Case vbInteger, vbLong
-        L = CLng(Value)
-        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, L, 4)
+        l = CLng(Value)
+        lResult = RegSetValueExW(keyhandle, StrPtr(field), 0, REG_DWORD, l, 4)
     Case vbString
         's = StrConv(CStr(Value), vbFromUnicode) & vbNullString
         s = CStr(Value) & vbNullString
